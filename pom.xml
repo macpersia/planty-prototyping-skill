@@ -99,9 +99,9 @@
 						<version>2.6</version>
 						<executions>
 							<execution>
-								<phase>package</phase>
+								<phase>prepare-package</phase>
 								<goals>
-									<goal>assembly</goal>
+									<goal>single</goal>
 								</goals>
 							</execution>
 						</executions>

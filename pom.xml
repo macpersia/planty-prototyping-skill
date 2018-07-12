@@ -22,6 +22,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<ask.sdk.version>2.3.1</ask.sdk.version>
 	</properties>
 
 	<dependencies>
@@ -35,6 +36,44 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+<!--
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+-->
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk-core</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk-lambda-support</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk-servlet-support</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk-dynamodb-persistence-adapter</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+
+		<dependency>
+		  <groupId>com.amazon.alexa</groupId>
+		  <artifactId>ask-sdk-apache-client</artifactId>
+		  <version>${ask.sdk.version}</version>
+		</dependency>
+		
 	</dependencies>
 
 	<build>
@@ -46,5 +85,29 @@
 		</plugins>
 	</build>
 
-
+	<profiles>
+		<profile>
+			<id>with-deps</id>
+			<properties>
+				<descriptorId>jar-with-dependencies</descriptorId>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-assembly-plugin</artifactId>
+						<version>2.6</version>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>assembly</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

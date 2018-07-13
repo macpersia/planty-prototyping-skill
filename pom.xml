@@ -37,13 +37,13 @@
 			<scope>test</scope>
 		</dependency>
 
-<!--
 		<dependency>
 		  <groupId>com.amazon.alexa</groupId>
 		  <artifactId>ask-sdk</artifactId>
 		  <version>${ask.sdk.version}</version>
 		</dependency>
--->
+
+<!--
 		<dependency>
 		  <groupId>com.amazon.alexa</groupId>
 		  <artifactId>ask-sdk-core</artifactId>
@@ -73,7 +73,8 @@
 		  <artifactId>ask-sdk-apache-client</artifactId>
 		  <version>${ask.sdk.version}</version>
 		</dependency>
-		
+-->
+
 	</dependencies>
 
 	<build>

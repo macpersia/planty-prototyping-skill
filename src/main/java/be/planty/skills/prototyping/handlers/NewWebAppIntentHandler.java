@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession.Receiptable;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.web.socket.client.WebSocketClient;
@@ -23,6 +24,7 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.Scanner;
 
 import static java.util.Arrays.asList;
 
@@ -47,33 +49,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
             final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
             directiveSvc.enqueue(directiveRequest);
 
+            messageAgent(directiveSvc);
 
-
-            final HashMap message = new HashMap() {{
-                put("to", "Agent X");
-                put("message", "A message to myself!");
-            }};
-
-
-
-            final String url = "ws://localhost:8080/websocket/messages";
-            WebSocketClient socketClient = new StandardWebSocketClient();
-
-            //WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
-            SockJsClient sockJsClient = new SockJsClient(asList(
-                    new WebSocketTransport(socketClient)
-            ));
-            WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
-
-            stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-            final StompSessionHandler handler = new MySessionHandler(directiveSvc, message);
-            logger.info("Connecting to: " + url + " ...");
-            stompClient.connect(url, handler).addCallback(
-                            session -> {
-                                session.subscribe("/topic/responses", handler);
-                                session.send("/topic/requests", message);
-                            },
-                            err -> {});
             return Optional.empty();
 
         } catch (ServiceException e) {
@@ -84,23 +61,59 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
+    private void messageAgent(DirectiveServiceClient directiveSvc) {
+        final HashMap message = new HashMap() {{
+            put("to", "Agent X");
+            put("message", "A message to myself!");
+        }};
+
+
+        final String url = "ws://localhost:8080/websocket/agent";
+        WebSocketClient socketClient = new StandardWebSocketClient();
+
+        //WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
+        SockJsClient sockJsClient = new SockJsClient(asList(
+                new WebSocketTransport(socketClient)
+        ));
+        WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+
+        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        final StompSessionHandler handler = new AgentSessionHandler(directiveSvc);
+
+        logger.info("Connecting to: " + url + " ...");
+        stompClient.connect(url, handler).addCallback(
+                session -> {
+                    logger.info("Connected!");
+                    session.subscribe("/topic/agent/responses", handler);
+                    final Receiptable receiptable = session.send("/topic/agent/requests", message);
+                    receiptable.addReceiptTask(() -> logger.info("Success receipt ID: " + receiptable.getReceiptId()));
+                    receiptable.addReceiptLostTask(() -> logger.info("Lost receipt ID: " + receiptable.getReceiptId()));
+                    logger.info("Connected!");
+                },
+                err -> logger.error(err.getMessage(), err));
+    }
+
+    // TODO: Remove after testing
+    public static void main(String[] args) {
+        new NewWebAppIntentHandler().messageAgent(null);
+        new Scanner(System.in).nextLine();
+    }
+
 }
 
-class MySessionHandler extends StompSessionHandlerAdapter {
+class AgentSessionHandler extends StompSessionHandlerAdapter {
 
-    private static final Logger logger = LoggerFactory.getLogger(MySessionHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(AgentSessionHandler.class);
 
     private final DirectiveService directiveSvc;
-    private final HashMap message;
 
-    public MySessionHandler(DirectiveService directiveSvc, HashMap message) {
+    public AgentSessionHandler(DirectiveService directiveSvc) {
         this.directiveSvc = directiveSvc;
-        this.message = message;
     }
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
-        if (headers.getDestination().equals("/topic/responses")) {
+        if (headers.getDestination().equals("/topic/agent/responses")) {
             String response = String.valueOf(payload);
             final SpeakDirective directive = SpeakDirective.builder()
                     .withSpeech("I'm done! Your app is ready."

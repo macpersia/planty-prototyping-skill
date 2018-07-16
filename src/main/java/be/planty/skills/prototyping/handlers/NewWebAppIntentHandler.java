@@ -12,17 +12,13 @@ import com.amazon.ask.request.Predicates;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession.Receiptable;
-import org.springframework.messaging.simp.stomp.StompSessionHandler;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.stomp.*;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import java.util.HashMap;
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -62,11 +58,11 @@ public class NewWebAppIntentHandler implements RequestHandler {
     }
 
     private void messageAgent(DirectiveServiceClient directiveSvc) {
-        final HashMap message = new HashMap() {{
-            put("to", "Agent X");
-            put("message", "A message to myself!");
-        }};
-
+//        final HashMap message = new HashMap() {{
+//            put("to", "Agent X");
+//            put("message", "A message to myself!");
+//        }};
+        final String message = "A message to myself!";
 
         final String url = "ws://localhost:8080/websocket/agent";
         WebSocketClient socketClient = new StandardWebSocketClient();
@@ -84,11 +80,9 @@ public class NewWebAppIntentHandler implements RequestHandler {
         stompClient.connect(url, handler).addCallback(
                 session -> {
                     logger.info("Connected!");
-                    session.subscribe("/topic/agent/responses", handler);
-                    final Receiptable receiptable = session.send("/topic/agent/requests", message);
-                    receiptable.addReceiptTask(() -> logger.info("Success receipt ID: " + receiptable.getReceiptId()));
-                    receiptable.addReceiptLostTask(() -> logger.info("Lost receipt ID: " + receiptable.getReceiptId()));
-                    logger.info("Connected!");
+                    session.subscribe("/topic/agent.res", handler);
+                    logger.info("Sending a message to /topic/agent.req...");
+                    session.send("/topic/agent.req", message);
                 },
                 err -> logger.error(err.getMessage(), err));
     }
@@ -113,7 +107,7 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
-        if (headers.getDestination().equals("/topic/agent/responses")) {
+        if (headers.getDestination().equals("/topic/agent.res")) {
             String response = String.valueOf(payload);
             final SpeakDirective directive = SpeakDirective.builder()
                     .withSpeech("I'm done! Your app is ready."
@@ -130,5 +124,15 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
                 logger.error(e.getMessage(), e);
             }
         }
+    }
+
+    @Override
+    public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
+        logger.error(exception.toString(), exception);
+    }
+
+    @Override
+    public void handleTransportError(StompSession session, Throwable exception) {
+        logger.error(exception.toString(), exception);
     }
 }

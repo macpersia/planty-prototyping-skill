@@ -117,6 +117,10 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
                     .withDirective(directive)
                     .build();
 
+            if (directiveSvc == null) {
+                logger.warn("No DirectiveService set; Probably in test mode.");
+                return;
+            }
             try {
                 directiveSvc.enqueue(directiveRequest);
 

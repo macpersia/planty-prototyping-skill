@@ -125,9 +125,9 @@ public class NewWebAppIntentHandler implements RequestHandler {
         futureSession.addCallback(
                 session -> {
                     logger.info("Connected!");
-                    session.subscribe("/topic/agent.res", handler);
-                    logger.info("Sending a message to /topic/agent.req...");
-                    session.send("/topic/agent.req", message);
+                    session.subscribe("/topic/action.res", handler);
+                    logger.info("Sending a message to /topic/action.req...");
+                    session.send("/topic/action.req", message);
                 },
                 err -> logger.error(err.getMessage(), err));
         return futureSession;
@@ -150,7 +150,7 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
         if (headers == null || headers.getDestination() == null)
             return;
         
-        if (headers.getDestination().equals("/topic/agent.res")) {
+        if (headers.getDestination().equals("/topic/action.res")) {
             String response = String.valueOf(payload);
             final SpeakDirective directive = SpeakDirective.builder()
                     .withSpeech("I'm done! Your app is ready."

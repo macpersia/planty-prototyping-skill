@@ -9,20 +9,29 @@ import com.amazon.ask.model.services.directive.DirectiveServiceClient;
 import com.amazon.ask.model.services.directive.SendDirectiveRequest;
 import com.amazon.ask.model.services.directive.SpeakDirective;
 import com.amazon.ask.request.Predicates;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.http.auth.AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Scanner;
 
 import static java.util.Arrays.asList;
+import static org.springframework.util.StringUtils.isEmpty;
 
 public class NewWebAppIntentHandler implements RequestHandler {
 
@@ -45,9 +54,15 @@ public class NewWebAppIntentHandler implements RequestHandler {
             final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
             directiveSvc.enqueue(directiveRequest);
 
-            messageAgent(directiveSvc);
+            try {
+                messageAgent(directiveSvc);
+                return Optional.empty();
 
-            return Optional.empty();
+            } catch (AuthenticationException e) {
+                logger.error(e.getMessage(), e);
+                return Optional.empty();
+            }
+
 
         } catch (ServiceException e) {
             final String speechText = "Sorry! Something went wrong, and I couldn't fulfill your request.";
@@ -57,27 +72,57 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
-    private void messageAgent(DirectiveServiceClient directiveSvc) {
+    static ListenableFuture<StompSession> messageAgent(DirectiveServiceClient directiveSvc) throws AuthenticationException {
+
+        final String baseUrl = System.getProperty("be.planty.assistant.login.url");
+        final String username = System.getProperty("be.planty.assistant.access.id");
+        final String password = System.getProperty("be.planty.assistant.access.key");
+        final Map<String, String> request = new HashMap(){{
+            put("username", username);
+            put("password", password);
+        }};
+        final ResponseEntity<String> response = new RestTemplate()
+                .postForEntity(baseUrl, request, String.class);
+
+        if (response.getStatusCode().isError()) {
+            logger.error(response.toString());
+            throw new AuthenticationException(response.toString());
+        }
+        final HttpHeaders respHeaders = response.getHeaders();
+        final String authHeader = respHeaders.getFirst("Authorization");
+        if (isEmpty(authHeader)) {
+            final String msg = "No 'Authorization header found!";
+            logger.error(msg + " : " + response.toString());
+            throw new AuthenticationException(msg);
+        }
+        if (!authHeader.startsWith("Bearer ")) {
+            final String msg = "The 'Authorization header does not start with 'Bearer '!";
+            logger.error(msg + " : " + authHeader);
+            throw new AuthenticationException(msg);
+        }
+        final String accessToken = authHeader.substring(7);
+
 //        final HashMap message = new HashMap() {{
 //            put("to", "Agent X");
 //            put("message", "A message to myself!");
 //        }};
         final String message = "A message to myself!";
 
-        final String url = "ws://localhost:8080/websocket/agent";
-        WebSocketClient socketClient = new StandardWebSocketClient();
+        final String url = "ws://localhost:8080/websocket/agent?access_token=" + accessToken;
+        final WebSocketClient socketClient = new StandardWebSocketClient();
 
-        //WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
-        SockJsClient sockJsClient = new SockJsClient(asList(
+        //final WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
+        final SockJsClient sockJsClient = new SockJsClient(asList(
                 new WebSocketTransport(socketClient)
         ));
-        WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+        final WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
 
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         final StompSessionHandler handler = new AgentSessionHandler(directiveSvc);
 
         logger.info("Connecting to: " + url + " ...");
-        stompClient.connect(url, handler).addCallback(
+        final ListenableFuture<StompSession> futureSession = stompClient.connect(url, handler);
+        futureSession.addCallback(
                 session -> {
                     logger.info("Connected!");
                     session.subscribe("/topic/agent.res", handler);
@@ -85,14 +130,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
                     session.send("/topic/agent.req", message);
                 },
                 err -> logger.error(err.getMessage(), err));
+        return futureSession;
     }
-
-    // TODO: Remove after testing
-    public static void main(String[] args) {
-        new NewWebAppIntentHandler().messageAgent(null);
-        new Scanner(System.in).nextLine();
-    }
-
 }
 
 class AgentSessionHandler extends StompSessionHandlerAdapter {
@@ -107,6 +146,10 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
+
+        if (headers == null || headers.getDestination() == null)
+            return;
+        
         if (headers.getDestination().equals("/topic/agent.res")) {
             String response = String.valueOf(payload);
             final SpeakDirective directive = SpeakDirective.builder()

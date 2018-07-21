@@ -2,14 +2,14 @@ package be.planty.skills.prototyping.handlers;
 
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
+import com.amazon.ask.model.RequestEnvelope;
 import com.amazon.ask.model.Response;
 import com.amazon.ask.model.services.ServiceException;
-import com.amazon.ask.model.services.directive.DirectiveService;
 import com.amazon.ask.model.services.directive.DirectiveServiceClient;
+import com.amazon.ask.model.services.directive.Header;
 import com.amazon.ask.model.services.directive.SendDirectiveRequest;
 import com.amazon.ask.model.services.directive.SpeakDirective;
 import com.amazon.ask.request.Predicates;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.http.auth.AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +26,10 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static java.util.Arrays.asList;
 import static org.springframework.util.StringUtils.isEmpty;
@@ -45,26 +46,27 @@ public class NewWebAppIntentHandler implements RequestHandler {
     @Override
     public Optional<Response> handle(HandlerInput input) {
         try {
-            final SpeakDirective directive = SpeakDirective.builder()
-                    .withSpeech("Sure, please wait while I instruct the agent to create the app…")
-                    .build();
+            final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
+
+            final String procressReply = "Sure, please wait while I instruct the agent to create the app…";
+            final SpeakDirective directive = SpeakDirective.builder().withSpeech(procressReply).build();
+
+            final RequestEnvelope requestEnvelope = input.getRequestEnvelope();
+            //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
+            final String requestId = requestEnvelope.getRequest().getRequestId();
+
+            final Header header = Header.builder().withRequestId(requestId).build();
             final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
+                    .withHeader(header)
                     .withDirective(directive)
                     .build();
-            final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
             directiveSvc.enqueue(directiveRequest);
 
-            try {
-                messageAgent(directiveSvc);
-                return Optional.empty();
+            final CompletableFuture<Optional<Response>> futureResponse = messageAgent(input);
+            return futureResponse.get();
 
-            } catch (AuthenticationException e) {
-                logger.error(e.getMessage(), e);
-                return Optional.empty();
-            }
-
-
-        } catch (ServiceException e) {
+        } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
+            logger.error(e.getMessage(), e);
             final String speechText = "Sorry! Something went wrong, and I couldn't fulfill your request.";
             return input.getResponseBuilder()
                     .withSpeech(speechText)
@@ -72,7 +74,9 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
-    static ListenableFuture<StompSession> messageAgent(DirectiveServiceClient directiveSvc) throws AuthenticationException {
+    static CompletableFuture<Optional<Response>> messageAgent(HandlerInput input) throws AuthenticationException {
+
+        final CompletableFuture<Optional<Response>> futureResponse = new CompletableFuture<>();
 
         final String baseUrl = System.getProperty("be.planty.assistant.login.url");
         final String username = System.getProperty("be.planty.assistant.access.id");
@@ -119,7 +123,7 @@ public class NewWebAppIntentHandler implements RequestHandler {
         final WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
 
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        final StompSessionHandler handler = new AgentSessionHandler(directiveSvc);
+        final StompSessionHandler handler = new AgentSessionHandler(input, futureResponse);
 
         logger.info("Connecting to: " + url + " ...");
         final ListenableFuture<StompSession> futureSession = stompClient.connect(url, handler);
@@ -131,46 +135,35 @@ public class NewWebAppIntentHandler implements RequestHandler {
                     session.send("/topic/action.req", message);
                 },
                 err -> logger.error(err.getMessage(), err));
-        return futureSession;
+        return futureResponse;
     }
 }
 
 class AgentSessionHandler extends StompSessionHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentSessionHandler.class);
+    private final HandlerInput input;
+    private final CompletableFuture<Optional<Response>> futureResponse;
 
-    private final DirectiveService directiveSvc;
-
-    public AgentSessionHandler(DirectiveService directiveSvc) {
-        this.directiveSvc = directiveSvc;
+    public AgentSessionHandler(HandlerInput input, CompletableFuture<Optional<Response>> futureResponse) {
+        this.input = input;
+        this.futureResponse = futureResponse;
     }
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
 
-        if (headers == null || headers.getDestination() == null)
-            return;
-        
-        if (headers.getDestination().equals("/topic/action.res")) {
+        if (headers == null || headers.getDestination() == null) {
+            futureResponse.complete(Optional.empty());
+
+        } else if (headers.getDestination().equals("/topic/action.res")) {
             String response = String.valueOf(payload);
-            final SpeakDirective directive = SpeakDirective.builder()
-                    .withSpeech("I'm done! Your app is ready."
-                            + "\nYou got a message from the app too! It says, " + response)
-                    .build();
-            final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
-                    .withDirective(directive)
-                    .build();
-
-            if (directiveSvc == null) {
-                logger.warn("No DirectiveService set; Probably in test mode.");
-                return;
-            }
-            try {
-                directiveSvc.enqueue(directiveRequest);
-
-            } catch (ServiceException e) {
-                logger.error(e.getMessage(), e);
-            }
+            futureResponse.complete(
+                    input.getResponseBuilder()
+                            //.withSimpleCard("")
+                            .withSpeech("I'm done! Your app is ready."
+                                    + "\nYou got a message from the app too! It says, " + response)
+                            .build());
         }
     }
 

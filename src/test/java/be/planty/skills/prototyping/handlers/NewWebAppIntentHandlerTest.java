@@ -1,17 +1,17 @@
 package be.planty.skills.prototyping.handlers;
 
+import com.amazon.ask.model.Response;
 import org.apache.http.auth.AuthenticationException;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.util.concurrent.ListenableFuture;
 
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Test class for the {@link NewWebAppIntentHandler}.
@@ -21,11 +21,11 @@ public class NewWebAppIntentHandlerTest {
 
     @Test
     public void messageAgent() throws ExecutionException, InterruptedException, TimeoutException, AuthenticationException {
-        final ListenableFuture<StompSession> futureSession = NewWebAppIntentHandler.messageAgent(null);
+        final CompletableFuture<Optional<Response>> futureSession = NewWebAppIntentHandler.messageAgent(null);
         assertNotNull(futureSession);
-        final StompSession session = futureSession.completable().get(5, SECONDS);
-        assertNotNull(session);
-        assertTrue(session.isConnected());
+        final Optional<Response> optResponse = futureSession.get(5, SECONDS);
+        assertTrue("No response is present!", optResponse.isPresent());
+        assertEquals("Some speech!", optResponse.get().getOutputSpeech());
     }
 
     @AfterClass

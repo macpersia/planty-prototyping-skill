@@ -2,8 +2,11 @@ package be.planty.skills.prototyping.handlers;
 
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
+import com.amazon.ask.model.IntentRequest;
 import com.amazon.ask.model.RequestEnvelope;
 import com.amazon.ask.model.Response;
+import com.amazon.ask.model.Slot;
+import com.amazon.ask.model.dialog.DelegateDirective;
 import com.amazon.ask.model.services.ServiceException;
 import com.amazon.ask.model.services.directive.DirectiveServiceClient;
 import com.amazon.ask.model.services.directive.Header;
@@ -31,12 +34,17 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static com.amazon.ask.model.DialogState.IN_PROGRESS;
 import static java.util.Arrays.asList;
 import static org.springframework.util.StringUtils.isEmpty;
 
 public class NewWebAppIntentHandler implements RequestHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(NewWebAppIntentHandler.class);
+
+    private final String baseUrl = System.getProperty("be.planty.assistant.login.url");
+    private final String username = System.getProperty("be.planty.assistant.access.id");
+    private final String password = System.getProperty("be.planty.assistant.access.key");
 
     @Override
     public boolean canHandle(HandlerInput input) {
@@ -46,22 +54,32 @@ public class NewWebAppIntentHandler implements RequestHandler {
     @Override
     public Optional<Response> handle(HandlerInput input) {
         try {
-            final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
-
-            final String procressReply = "Sure, please wait while I instruct the agent to create the app…";
-            final SpeakDirective directive = SpeakDirective.builder().withSpeech(procressReply).build();
-
-            final RequestEnvelope requestEnvelope = input.getRequestEnvelope();
-            //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
-            final String requestId = requestEnvelope.getRequest().getRequestId();
-
-            final Header header = Header.builder().withRequestId(requestId).build();
-            final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
-                    .withHeader(header)
-                    .withDirective(directive)
-                    .build();
-            directiveSvc.enqueue(directiveRequest);
-
+            final IntentRequest request = (IntentRequest) input.getRequestEnvelope().getRequest();
+            logger.info(">>>> request.getDialogState(): " + request.getDialogState());
+            final Slot appNameSlot = request.getIntent().getSlots().get("WebAppName");
+            logger.info(">>>> appNameSlot: " + appNameSlot);
+            if (isEmpty(appNameSlot.getValue())) {
+                final DelegateDirective delegateDirective = DelegateDirective.builder().build();
+                //webAppName = delegateDirective.getUpdatedIntent().getSlots().get("WebAppName").getValue();
+                logger.info(">>>> Delegating the dialog to Alexa, to get the web app name...");
+                return input.getResponseBuilder().addDelegateDirective(null).build();
+            } else {
+                final String progressReply =
+                        (request.getDialogState() == IN_PROGRESS ? "Alright!" : "Sure!")
+                        + " Please wait while I instruct the agent to create the app…";
+                final SpeakDirective speakDirective = SpeakDirective.builder().withSpeech(progressReply).build();
+                final RequestEnvelope requestEnvelope = input.getRequestEnvelope();
+                //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
+                final String requestId = requestEnvelope.getRequest().getRequestId();
+                final Header header = Header.builder().withRequestId(requestId).build();
+                final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
+                        .withHeader(header)
+                        .withDirective(speakDirective)
+                        .build();
+                final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
+                directiveSvc.enqueue(directiveRequest);
+            }
+            logger.info(">>>> Proceeding with app creation...");
             final CompletableFuture<Optional<Response>> futureResponse = messageAgent(input);
             return futureResponse.get();
 
@@ -74,13 +92,50 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
-    static CompletableFuture<Optional<Response>> messageAgent(HandlerInput input) throws AuthenticationException {
+    CompletableFuture<Optional<Response>> messageAgent(HandlerInput input) throws AuthenticationException {
 
         final CompletableFuture<Optional<Response>> futureResponse = new CompletableFuture<>();
 
-        final String baseUrl = System.getProperty("be.planty.assistant.login.url");
-        final String username = System.getProperty("be.planty.assistant.access.id");
-        final String password = System.getProperty("be.planty.assistant.access.key");
+        final String accessToken = login(baseUrl, username, password);
+        final String wsUrl = System.getProperty("be.planty.assistant.ws.url");
+        final String url = wsUrl + "/action?access_token=" + accessToken;
+        final WebSocketStompClient stompClient = createStompClient();
+        final StompSessionHandler handler = new AgentSessionHandler(input, futureResponse);
+
+        logger.info("Connecting to: " + url + " ...");
+        final ListenableFuture<StompSession> futureSession = stompClient.connect(url, handler);
+        futureSession.addCallback(
+                session -> {
+                    logger.info("Connected!");
+                    session.subscribe("/topic/action.res", handler);
+                    //final HashMap message = new HashMap() {{
+                    //    put("to", "Agent X");
+                    //    put("message", "A message to myself!");
+                    //}};
+                    final IntentRequest intentRequest = (IntentRequest) input.getRequestEnvelope().getRequest();
+                    final String appName = intentRequest.getIntent().getSlots().get("WebAppName").getValue();
+                    final String message = "Create an app named '" + appName + "'";
+                    logger.info("Sending a message to /topic/action.req...");
+                    session.send("/topic/action.req", message);
+                },
+                err -> logger.error(err.getMessage(), err));
+        return futureResponse;
+    }
+
+    private WebSocketStompClient createStompClient() {
+        final WebSocketClient socketClient = new StandardWebSocketClient();
+
+        //final WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
+        final SockJsClient sockJsClient = new SockJsClient(asList(
+                new WebSocketTransport(socketClient)
+        ));
+        final WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+
+        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        return stompClient;
+    }
+
+    private String login(String baseUrl, String username, String password) throws AuthenticationException {
         final Map<String, String> request = new HashMap(){{
             put("username", username);
             put("password", password);
@@ -104,38 +159,7 @@ public class NewWebAppIntentHandler implements RequestHandler {
             logger.error(msg + " : " + authHeader);
             throw new AuthenticationException(msg);
         }
-        final String accessToken = authHeader.substring(7);
-
-//        final HashMap message = new HashMap() {{
-//            put("to", "Agent X");
-//            put("message", "A message to myself!");
-//        }};
-        final String message = "A message to myself!";
-
-        final String wsUrl = System.getProperty("be.planty.assistant.ws.url");
-        final String url = wsUrl + "/action?access_token=" + accessToken;
-        final WebSocketClient socketClient = new StandardWebSocketClient();
-
-        //final WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);
-        final SockJsClient sockJsClient = new SockJsClient(asList(
-                new WebSocketTransport(socketClient)
-        ));
-        final WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
-
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        final StompSessionHandler handler = new AgentSessionHandler(input, futureResponse);
-
-        logger.info("Connecting to: " + url + " ...");
-        final ListenableFuture<StompSession> futureSession = stompClient.connect(url, handler);
-        futureSession.addCallback(
-                session -> {
-                    logger.info("Connected!");
-                    session.subscribe("/topic/action.res", handler);
-                    logger.info("Sending a message to /topic/action.req...");
-                    session.send("/topic/action.req", message);
-                },
-                err -> logger.error(err.getMessage(), err));
-        return futureResponse;
+        return authHeader.substring(7);
     }
 }
 
@@ -157,12 +181,11 @@ class AgentSessionHandler extends StompSessionHandlerAdapter {
             futureResponse.complete(Optional.empty());
 
         } else if (headers.getDestination().equals("/topic/action.res")) {
-            String response = String.valueOf(payload);
+            final String response = String.valueOf(payload);
+            logger.info("Here's the action response: " + response);
             futureResponse.complete(
                     input.getResponseBuilder()
-                            //.withSimpleCard("")
-                            .withSpeech("I'm done! Your app is ready."
-                                    + "\nYou got a message from the app too! It says, " + response)
+                            .withSpeech("I'm done! Your app is ready.")
                             .build());
         }
     }

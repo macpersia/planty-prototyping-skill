@@ -19,9 +19,11 @@ import static org.junit.Assert.*;
 //@RunWith(SpringRunner.class)
 public class NewWebAppIntentHandlerTest {
 
+    static final NewWebAppIntentHandler intentHandler = new NewWebAppIntentHandler();
+
     @Test
     public void messageAgent() throws ExecutionException, InterruptedException, TimeoutException, AuthenticationException {
-        final CompletableFuture<Optional<Response>> futureSession = NewWebAppIntentHandler.messageAgent(null);
+        final CompletableFuture<Optional<Response>> futureSession = intentHandler.messageAgent(null);
         assertNotNull(futureSession);
         final Optional<Response> optResponse = futureSession.get(5, SECONDS);
         assertTrue("No response is present!", optResponse.isPresent());

@@ -108,7 +108,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
 //        }};
         final String message = "A message to myself!";
 
-        final String url = "ws://localhost:8080/websocket/agent?access_token=" + accessToken;
+        final String wsUrl = System.getProperty("be.planty.assistant.ws.url");
+        final String url = wsUrl + "/action?access_token=" + accessToken;
         final WebSocketClient socketClient = new StandardWebSocketClient();
 
         //final WebSocketStompClient stompClient = new WebSocketStompClient(socketClient);

@@ -12,9 +12,9 @@
 	<!--<description>Demo project for Spring Boot</description>-->
 
 	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.0.3.RELEASE</version>
+		<groupId>be.planty.skills.assistant</groupId>
+		<artifactId>assistant-skill</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
@@ -47,50 +47,60 @@
 		  <artifactId>ask-sdk</artifactId>
 		  <version>${ask.sdk.version}</version>
 		</dependency>
-
-<!--
 		<dependency>
-		  <groupId>com.amazon.alexa</groupId>
-		  <artifactId>ask-sdk-core</artifactId>
-		  <version>${ask.sdk.version}</version>
+			<groupId>be.planty.skills.assistant</groupId>
+			<artifactId>assistant-skill</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+			<scope>compile</scope>
 		</dependency>
 
-		<dependency>
-		  <groupId>com.amazon.alexa</groupId>
-		  <artifactId>ask-sdk-lambda-support</artifactId>
-		  <version>${ask.sdk.version}</version>
-		</dependency>
+		<!--
+                <dependency>
+                  <groupId>com.amazon.alexa</groupId>
+                  <artifactId>ask-sdk-core</artifactId>
+                  <version>${ask.sdk.version}</version>
+                </dependency>
 
-		<dependency>
-		  <groupId>com.amazon.alexa</groupId>
-		  <artifactId>ask-sdk-servlet-support</artifactId>
-		  <version>${ask.sdk.version}</version>
-		</dependency>
+                <dependency>
+                  <groupId>com.amazon.alexa</groupId>
+                  <artifactId>ask-sdk-lambda-support</artifactId>
+                  <version>${ask.sdk.version}</version>
+                </dependency>
 
-		<dependency>
-		  <groupId>com.amazon.alexa</groupId>
-		  <artifactId>ask-sdk-dynamodb-persistence-adapter</artifactId>
-		  <version>${ask.sdk.version}</version>
-		</dependency>
+                <dependency>
+                  <groupId>com.amazon.alexa</groupId>
+                  <artifactId>ask-sdk-servlet-support</artifactId>
+                  <version>${ask.sdk.version}</version>
+                </dependency>
 
-		<dependency>
-		  <groupId>com.amazon.alexa</groupId>
-		  <artifactId>ask-sdk-apache-client</artifactId>
-		  <version>${ask.sdk.version}</version>
-		</dependency>
--->
+                <dependency>
+                  <groupId>com.amazon.alexa</groupId>
+                  <artifactId>ask-sdk-dynamodb-persistence-adapter</artifactId>
+                  <version>${ask.sdk.version}</version>
+                </dependency>
+
+                <dependency>
+                  <groupId>com.amazon.alexa</groupId>
+                  <artifactId>ask-sdk-apache-client</artifactId>
+                  <version>${ask.sdk.version}</version>
+                </dependency>
+        -->
 
 	</dependencies>
-<!--
 	<build>
 		<plugins>
+<!--
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+				  <classifier>exec</classifier>
+				</configuration>
 			</plugin>
+-->
+            
 		</plugins>
 	</build>
--->
 	<profiles>
 		<profile>
 			<id>with-deps</id>

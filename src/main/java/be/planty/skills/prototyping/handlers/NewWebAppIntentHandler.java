@@ -69,7 +69,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
                 directiveSvc.enqueue(directiveRequest);
             }
             logger.info(">>>> Proceeding with app creation...");
-            final CompletableFuture<Optional<Response>> futureResponse = agentSessionHelper.messageAgent(input);
+            final String message = createMessage(input);
+            final CompletableFuture<Optional<Response>> futureResponse = agentSessionHelper.messageAgent(input, message);
             return futureResponse.get();
 
         } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
@@ -79,6 +80,16 @@ public class NewWebAppIntentHandler implements RequestHandler {
                     .withSpeech(speechText)
                     .build();
         }
+    }
+
+    private String createMessage(HandlerInput input) {
+        //final HashMap message = new HashMap() {{
+        //    put("to", "Agent X");
+        //    put("message", "A message to myself!");
+        //}};
+        final IntentRequest intentRequest = (IntentRequest) input.getRequestEnvelope().getRequest();
+        final String appName = intentRequest.getIntent().getSlots().get("WebAppName").getValue();
+        return "Create an app named '" + appName + "'";
     }
 
 }

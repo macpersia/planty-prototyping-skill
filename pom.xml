@@ -19,7 +19,7 @@
 <!--
 	<parent>
 		<groupId>be.planty.skills.assistant</groupId>
-		<artifactId>assistant-skill</artifactId>
+		<artifactId>planty-assistant-skill</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 		<relativePath/> <!- - lookup parent from repository - ->
 	</parent>
@@ -55,7 +55,7 @@
 		</dependency>
 		<dependency>
 			<groupId>be.planty.skills.assistant</groupId>
-			<artifactId>assistant-skill</artifactId>
+			<artifactId>planty-assistant-skill</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>

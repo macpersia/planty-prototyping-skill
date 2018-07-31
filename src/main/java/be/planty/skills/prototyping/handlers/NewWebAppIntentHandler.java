@@ -7,7 +7,6 @@ import com.amazon.ask.model.IntentRequest;
 import com.amazon.ask.model.RequestEnvelope;
 import com.amazon.ask.model.Response;
 import com.amazon.ask.model.Slot;
-import com.amazon.ask.model.dialog.DelegateDirective;
 import com.amazon.ask.model.services.ServiceException;
 import com.amazon.ask.model.services.directive.DirectiveServiceClient;
 import com.amazon.ask.model.services.directive.Header;
@@ -48,7 +47,7 @@ public class NewWebAppIntentHandler implements RequestHandler {
             final Slot appNameSlot = request.getIntent().getSlots().get("WebAppName");
             logger.info(">>>> appNameSlot: " + appNameSlot);
             if (isEmpty(appNameSlot.getValue())) {
-                final DelegateDirective delegateDirective = DelegateDirective.builder().build();
+                //final DelegateDirective delegateDirective = DelegateDirective.builder().build();
                 //webAppName = delegateDirective.getUpdatedIntent().getSlots().get("WebAppName").getValue();
                 logger.info(">>>> Delegating the dialog to Alexa, to get the web app name...");
                 return input.getResponseBuilder().addDelegateDirective(null).build();

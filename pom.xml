@@ -33,6 +33,18 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>be.planty.skills.assistant</groupId>
+			<artifactId>planty-assistant-skill</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>be.planty.models.prototyping</groupId>
+			<artifactId>planty-prototyping-model</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>
@@ -52,12 +64,6 @@
 		  <groupId>com.amazon.alexa</groupId>
 		  <artifactId>ask-sdk</artifactId>
 		  <version>${ask.sdk.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>be.planty.skills.assistant</groupId>
-			<artifactId>planty-assistant-skill</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-			<scope>compile</scope>
 		</dependency>
 
 		<!--

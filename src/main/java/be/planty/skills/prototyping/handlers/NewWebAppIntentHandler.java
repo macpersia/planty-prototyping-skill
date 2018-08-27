@@ -1,5 +1,6 @@
 package be.planty.skills.prototyping.handlers;
 
+import be.planty.models.prototyping.ActionRequest;
 import be.planty.skills.assistant.handlers.agent.AgentClient;
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
@@ -13,10 +14,13 @@ import com.amazon.ask.model.services.directive.Header;
 import com.amazon.ask.model.services.directive.SendDirectiveRequest;
 import com.amazon.ask.model.services.directive.SpeakDirective;
 import com.amazon.ask.request.Predicates;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.auth.AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -29,6 +33,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
     private static final Logger logger = LoggerFactory.getLogger(NewWebAppIntentHandler.class);
 
     private final AgentClient agentSessionHelper;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public NewWebAppIntentHandler() {
         agentSessionHelper = new AgentClient();
@@ -72,7 +78,7 @@ public class NewWebAppIntentHandler implements RequestHandler {
             final CompletableFuture<Optional<Response>> futureResponse = agentSessionHelper.messageAgent(input, message);
             return futureResponse.get();
 
-        } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
+        } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException | JsonProcessingException e) {
             logger.error(e.getMessage(), e);
             final String speechText = "Sorry! Something went wrong, and I couldn't fulfill your request.";
             return input.getResponseBuilder()
@@ -81,14 +87,19 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
-    private String createMessage(HandlerInput input) {
+    private String createMessage(HandlerInput input) throws JsonProcessingException {
         //final HashMap message = new HashMap() {{
         //    put("to", "Agent X");
         //    put("message", "A message to myself!");
         //}};
         final IntentRequest intentRequest = (IntentRequest) input.getRequestEnvelope().getRequest();
         final String appName = intentRequest.getIntent().getSlots().get("WebAppName").getValue();
-        return "Create an app named '" + appName + "'";
+
+        //return "Create an app named '" + appName + "'";
+        final ActionRequest request = new ActionRequest("newWebApp", new HashMap() {{
+            put("WebAppName", appName);
+        }});
+        return objectMapper.writeValueAsString(request);
     }
 
 }

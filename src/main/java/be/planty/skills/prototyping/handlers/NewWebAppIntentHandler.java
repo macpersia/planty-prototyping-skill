@@ -74,11 +74,13 @@ public class NewWebAppIntentHandler implements RequestHandler {
                 directiveSvc.enqueue(directiveRequest);
             }
             logger.info(">>>> Proceeding with app creation...");
-            final String message = createMessage(input);
+            //final String message = createMessage(input);
+            //final CompletableFuture<Optional<Response>> futureResponse = agentSessionHelper.messageAgent(input, message);
+            final ActionRequest message = createRequest(input);
             final CompletableFuture<Optional<Response>> futureResponse = agentSessionHelper.messageAgent(input, message);
             return futureResponse.get();
 
-        } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException | JsonProcessingException e) {
+        } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
             logger.error(e.getMessage(), e);
             final String speechText = "Sorry! Something went wrong, and I couldn't fulfill your request.";
             return input.getResponseBuilder()
@@ -92,14 +94,18 @@ public class NewWebAppIntentHandler implements RequestHandler {
         //    put("to", "Agent X");
         //    put("message", "A message to myself!");
         //}};
+        final ActionRequest request = createRequest(input);
+        return objectMapper.writeValueAsString(request);
+    }
+
+    private ActionRequest createRequest(HandlerInput input) {
         final IntentRequest intentRequest = (IntentRequest) input.getRequestEnvelope().getRequest();
         final String appName = intentRequest.getIntent().getSlots().get("WebAppName").getValue();
 
         //return "Create an app named '" + appName + "'";
-        final ActionRequest request = new ActionRequest("NewWebApp", new HashMap() {{
+        return new ActionRequest("NewWebApp", new HashMap() {{
             put("WebAppName", appName);
         }});
-        return objectMapper.writeValueAsString(request);
     }
 
 }

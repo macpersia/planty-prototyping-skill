@@ -96,7 +96,7 @@ public class NewWebAppIntentHandler implements RequestHandler {
         final String appName = intentRequest.getIntent().getSlots().get("WebAppName").getValue();
 
         //return "Create an app named '" + appName + "'";
-        final ActionRequest request = new ActionRequest("newWebApp", new HashMap() {{
+        final ActionRequest request = new ActionRequest("NewWebApp", new HashMap() {{
             put("WebAppName", appName);
         }});
         return objectMapper.writeValueAsString(request);

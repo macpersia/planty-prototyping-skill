@@ -89,14 +89,14 @@ public class NewWebAppIntentHandler implements RequestHandler {
         }
     }
 
-    private String createMessage(HandlerInput input) throws JsonProcessingException {
-        //final HashMap message = new HashMap() {{
-        //    put("to", "Agent X");
-        //    put("message", "A message to myself!");
-        //}};
-        final ActionRequest request = createRequest(input);
-        return objectMapper.writeValueAsString(request);
-    }
+//    private String createMessage(HandlerInput input) throws JsonProcessingException {
+//        //final HashMap message = new HashMap() {{
+//        //    put("to", "Agent X");
+//        //    put("message", "A message to myself!");
+//        //}};
+//        final ActionRequest request = createRequest(input);
+//        return objectMapper.writeValueAsString(request);
+//    }
 
     private ActionRequest createRequest(HandlerInput input) {
         final IntentRequest intentRequest = (IntentRequest) input.getRequestEnvelope().getRequest();

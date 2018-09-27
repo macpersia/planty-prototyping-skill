@@ -23,7 +23,7 @@ public class ChangePhoneNoIntentHandler implements RequestHandler {
 
     public static final String INTENT_CHANGE_PHONE_NO = "ChangePhoneNoIntent";
 
-    public static final String SLOT_PHONE_NO = "phoneNumber";
+    public static final String SLOT_PHONE_NO = "phoneNo";
 
     @Override
     public boolean canHandle(HandlerInput input) {

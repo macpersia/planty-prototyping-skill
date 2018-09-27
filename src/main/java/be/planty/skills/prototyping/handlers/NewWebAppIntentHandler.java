@@ -1,12 +1,12 @@
 package be.planty.skills.prototyping.handlers;
 
 import be.planty.models.prototyping.ActionRequest;
+import be.planty.skills.assistant.handlers.AssistantUtils;
 import be.planty.skills.assistant.handlers.agent.AgentClient;
 import com.amazon.ask.attributes.AttributesManager;
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
 import com.amazon.ask.model.IntentRequest;
-import com.amazon.ask.model.RequestEnvelope;
 import com.amazon.ask.model.Response;
 import com.amazon.ask.model.Slot;
 import com.amazon.ask.model.services.ServiceException;
@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static be.planty.skills.prototyping.handlers.ChangePhoneNoIntentHandler.SLOT_PHONE_NO;
 import static com.amazon.ask.model.DialogState.IN_PROGRESS;
@@ -42,6 +44,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
+
     public NewWebAppIntentHandler() {
         agentClient = new AgentClient();
     }
@@ -54,6 +58,11 @@ public class NewWebAppIntentHandler implements RequestHandler {
     @Override
     public Optional<Response> handle(HandlerInput input) {
         try {
+            // Since it  could add too much latency to fetch the email address and to create necessary factories,
+            // we try to prepare as soon as possible, so that by the time we need them, they'll be already cached.
+            cachedThreadPool.execute(() -> AssistantUtils.getEmailAddress(input));
+            cachedThreadPool.execute(() -> input.getServiceClientFactory().getDirectiveService());
+
             final IntentRequest request = (IntentRequest) input.getRequestEnvelope().getRequest();
             logger.info(">>>> request.getDialogState(): " + request.getDialogState());
             final Slot appNameSlot = request.getIntent().getSlots().get(SLOT_APP_NAME);
@@ -66,9 +75,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
                         (request.getDialogState() == IN_PROGRESS ? "Alright!" : "Sure!")
                                 + " Please wait while I instruct the agent to create the app…";
                 final SpeakDirective speakDirective = SpeakDirective.builder().withSpeech(progressReply).build();
-                final RequestEnvelope requestEnvelope = input.getRequestEnvelope();
                 //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
-                final String requestId = requestEnvelope.getRequest().getRequestId();
+                final String requestId = request.getRequestId();
                 final Header header = Header.builder().withRequestId(requestId).build();
                 final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
                         .withHeader(header)
@@ -78,10 +86,10 @@ public class NewWebAppIntentHandler implements RequestHandler {
                 directiveSvc.enqueue(directiveRequest);
             }
             logger.info(">>>> Proceeding with app creation...");
-            //final String message = createMessage(input);
-            //final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, message);
-            final ActionRequest message = createRequest(input);
-            final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, message);
+            //final String actionReq = createMessage(input);
+            //final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
+            final ActionRequest actionReq = createRequest(input);
+            final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
             return futureResponse.get();
 
         } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {

@@ -2,7 +2,7 @@ package be.planty.skills.prototyping.handlers;
 
 import be.planty.models.prototyping.ActionRequest;
 import be.planty.skills.assistant.handlers.AssistantUtils;
-import be.planty.skills.assistant.handlers.agent.AgentClient;
+import be.planty.skills.prototyping.handlers.agent.AgentClient;
 import com.amazon.ask.attributes.AttributesManager;
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
@@ -21,10 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import static be.planty.skills.prototyping.handlers.ChangePhoneNoIntentHandler.SLOT_PHONE_NO;
 import static com.amazon.ask.model.DialogState.IN_PROGRESS;
@@ -90,11 +87,17 @@ public class NewWebAppIntentHandler implements RequestHandler {
             //final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
             final ActionRequest actionReq = createRequest(input);
             final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
-            return futureResponse.get();
+            return futureResponse.get(45, TimeUnit.SECONDS);
 
         } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
             logger.error(e.getMessage(), e);
             final String speechText = "Sorry! Something went wrong, and I couldn't fulfill your request.";
+            return input.getResponseBuilder()
+                    .withSpeech(speechText)
+                    .build();
+        } catch (TimeoutException e) {
+            logger.error(e.getMessage(), e);
+            final String speechText = "Sorry! I did not receive a response from the agent in a timely manner.";
             return input.getResponseBuilder()
                     .withSpeech(speechText)
                     .build();

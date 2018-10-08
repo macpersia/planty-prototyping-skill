@@ -28,13 +28,15 @@ public class AgentSessionHandler extends be.planty.skills.assistant.handlers.age
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
+
         if (payload instanceof ActionResponse
                 || this.input.matches(intentName(INTENT_NEW_WEB_APP))) {
             try {
                 final String prettyJson = objectWriter.writeValueAsString(payload);
                 logger.info("Received action response: " + prettyJson);
                 final ActionResponse actionResponse = (ActionResponse) payload;
-                if ( actionResponse.statusCode / 100 == 2) {
+                final Integer statusCode = actionResponse.statusCode;
+                if ( statusCode / 100 == 2) {
                     final String appId = String.valueOf(actionResponse.body);
                     futureResponse.complete(
                             input.getResponseBuilder()
@@ -46,7 +48,8 @@ public class AgentSessionHandler extends be.planty.skills.assistant.handlers.age
                 } else{
                     futureResponse.complete(
                             input.getResponseBuilder()
-                                    .withSpeech("The request failed with error code " + actionResponse.statusCode + ".")
+                                    .withSpeech("The request failed with error code" +
+                                            " <say-as interpret-as=\"telephone\">" + statusCode + "</say-as>.")
                                     .build());
                 }
             } catch (JsonProcessingException e) {

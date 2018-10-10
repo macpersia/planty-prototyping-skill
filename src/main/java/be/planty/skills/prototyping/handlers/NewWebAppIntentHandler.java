@@ -6,9 +6,7 @@ import be.planty.skills.prototyping.handlers.agent.AgentClient;
 import com.amazon.ask.attributes.AttributesManager;
 import com.amazon.ask.dispatcher.request.handler.HandlerInput;
 import com.amazon.ask.dispatcher.request.handler.RequestHandler;
-import com.amazon.ask.model.IntentRequest;
-import com.amazon.ask.model.Response;
-import com.amazon.ask.model.Slot;
+import com.amazon.ask.model.*;
 import com.amazon.ask.model.services.ServiceException;
 import com.amazon.ask.model.services.directive.DirectiveServiceClient;
 import com.amazon.ask.model.services.directive.Header;
@@ -60,34 +58,43 @@ public class NewWebAppIntentHandler implements RequestHandler {
             cachedThreadPool.execute(() -> AssistantUtils.getEmailAddress(input));
             cachedThreadPool.execute(() -> input.getServiceClientFactory().getDirectiveService());
 
-            final IntentRequest request = (IntentRequest) input.getRequestEnvelope().getRequest();
+            final RequestEnvelope reqEnvelope = input.getRequestEnvelope();
+            final IntentRequest request = (IntentRequest) reqEnvelope.getRequest();
             logger.info(">>>> request.getDialogState(): " + request.getDialogState());
             final Slot appNameSlot = request.getIntent().getSlots().get(SLOT_APP_NAME);
             logger.info(">>>> appNameSlot: " + appNameSlot);
             if (isEmpty(appNameSlot.getValue())) {
                 logger.info(">>>> Delegating the dialog to Alexa, to get the web app name...");
                 return input.getResponseBuilder().addDelegateDirective(null).build();
-            } else {
-                final String progressReply =
-                        (request.getDialogState() == IN_PROGRESS ? "Alright!" : "Sure!")
-                                + " Please wait while I instruct the agent to create the app…";
-                final SpeakDirective speakDirective = SpeakDirective.builder().withSpeech(progressReply).build();
-                //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
-                final String requestId = request.getRequestId();
-                final Header header = Header.builder().withRequestId(requestId).build();
-                final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
-                        .withHeader(header)
-                        .withDirective(speakDirective)
-                        .build();
-                final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
-                directiveSvc.enqueue(directiveRequest);
             }
-            logger.info(">>>> Proceeding with app creation...");
+
+            final Session session = reqEnvelope.getSession();
+            logger.info(">>>> new session? " + session.getNew());
+
+            final String progressReply =
+                    (request.getDialogState() == IN_PROGRESS ? "Alright!" : "Sure!")
+                            + " Please wait while I instruct the agent to create the app…";
+            final SpeakDirective.Builder speakDirBuilder = SpeakDirective.builder().withSpeech(progressReply);
+            final SpeakDirective speakDirective = speakDirBuilder.build();
+            //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();
+            final String requestId = request.getRequestId();
+            final Header header = Header.builder().withRequestId(requestId).build();
+            final SendDirectiveRequest directiveRequest = SendDirectiveRequest.builder()
+                    .withHeader(header)
+                    .withDirective(speakDirective)
+                    .build();
+            final DirectiveServiceClient directiveSvc = input.getServiceClientFactory().getDirectiveService();
+            directiveSvc.enqueue(directiveRequest);
+            logger.info(">>>> Progressive response is enqueued.");
+
+            //logger.info(">>>> Proceeding with app creation...");
             //final String actionReq = createMessage(input);
             //final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
             final ActionRequest actionReq = createRequest(input);
             final CompletableFuture<Optional<Response>> futureResponse = agentClient.messageAgent(input, actionReq);
-            return futureResponse.get(45, TimeUnit.SECONDS);
+            final Optional<Response> response = futureResponse.get(45, TimeUnit.SECONDS);
+            logger.info(">>>> Final response is ready.");
+            return response;
 
         } catch (ServiceException | InterruptedException | ExecutionException | AuthenticationException e) {
             logger.error(e.getMessage(), e);

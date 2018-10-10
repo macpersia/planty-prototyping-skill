@@ -2,10 +2,8 @@ package be.planty.skills.prototyping;
 
 import be.planty.skills.assistant.AssistantStreamHandler;
 import be.planty.skills.assistant.handlers.*;
-import be.planty.skills.prototyping.handlers.ChangePhoneNoIntentHandler;
-import be.planty.skills.prototyping.handlers.GetPhoneNoIntentHandler;
+import be.planty.skills.prototyping.handlers.*;
 import be.planty.skills.prototyping.handlers.LaunchRequestHandler;
-import be.planty.skills.prototyping.handlers.NewWebAppIntentHandler;
 import com.amazon.ask.Skills;
 import com.amazon.ask.builder.SkillBuilder;
 
@@ -25,7 +23,8 @@ public class PrototypingStreamHandler extends AssistantStreamHandler {
                         new SessionEndedRequestHandler(),
                         new NewWebAppIntentHandler(),
                         new ChangePhoneNoIntentHandler(),
-                        new GetPhoneNoIntentHandler())
+                        new GetPhoneNoIntentHandler(),
+                        new TestProgressiveResponseIntentHandler())
 //                .addRequestInterceptor(new MyRequestInterceptor())
 //                .addResponseInterceptor(new MyResponseInterceptor())
                 .addExceptionHandler(new MyExecptionHandler())

@@ -73,7 +73,8 @@ public class NewWebAppIntentHandler implements RequestHandler {
 
             final String progressReply =
                     (request.getDialogState() == IN_PROGRESS ? "Alright!" : "Sure!")
-                            + " Please wait while I instruct the agent to create the app…";
+//                            + " Please wait while I instruct the agent to create the app..."
+                    ;
             final SpeakDirective.Builder speakDirBuilder = SpeakDirective.builder().withSpeech(progressReply);
             final SpeakDirective speakDirective = speakDirBuilder.build();
             //final String apiAccessToken = requestEnvelope.getContext().getSystem().getApiAccessToken();

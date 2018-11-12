@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static be.planty.skills.prototyping.handlers.NewWebAppIntentHandler.INTENT_NEW_WEB_APP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ public class AgentIntegrationTest {
         when(mockInput.getResponseBuilder())
                 .thenReturn(new ResponseBuilder());
 
-        final ActionRequest message = new ActionRequest("NewWebApp", new HashMap() {{
+        final ActionRequest message = new ActionRequest(INTENT_NEW_WEB_APP, new HashMap() {{
             put("WebAppName", "Tequila");
         }});
         final CompletableFuture<Optional<Response>> futureSession = agentClient.messageAgent(mockInput, message);

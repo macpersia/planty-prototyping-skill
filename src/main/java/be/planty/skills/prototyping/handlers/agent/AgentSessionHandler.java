@@ -30,7 +30,7 @@ public class AgentSessionHandler extends be.planty.skills.assistant.handlers.age
     public void handleFrame(StompHeaders headers, Object payload) {
 
         if (payload instanceof ActionResponse
-                || this.input.matches(intentName(INTENT_NEW_WEB_APP))) {
+                && this.input.matches(intentName(INTENT_NEW_WEB_APP))) {
             try {
                 final String prettyJson = objectWriter.writeValueAsString(payload);
                 logger.info("Received action response: " + prettyJson);

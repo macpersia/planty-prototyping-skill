@@ -5,7 +5,7 @@
 
 	<groupId>be.planty.skills.prototyping</groupId>
 	<artifactId>planty-prototyping-skill</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>Planty Prototyping Skill</name>
@@ -36,13 +36,13 @@
 		<dependency>
 			<groupId>be.planty.skills.assistant</groupId>
 			<artifactId>planty-assistant-skill</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.2-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>be.planty.models.prototyping</groupId>
 			<artifactId>planty-prototyping-model</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.2-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>

@@ -48,7 +48,7 @@ public class AgentSessionHandler extends be.planty.skills.assistant.handlers.age
                     futureResponse.complete(
                             input.getResponseBuilder()
                                     .withSpeech("<speak>"
-                                            + "I'm done with the app creation, and the app i.d. is"
+                                            + "I'm done with the app creation, and the app ID is"
                                             + " <say-as interpret-as=\"telephone\">" + appId + "</say-as>."
                                             + "</speak>")
                                     .build());
